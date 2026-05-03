@@ -48,6 +48,7 @@ vim.o.signcolumn = "yes"
 -- Set tab width to 4 spaces
 vim.opt["tabstop"] = 4
 vim.opt["shiftwidth"] = 4
+vim.opt["expandtab"] = true
 
 -- Set colorcolumn to 80th char.
 vim.wo.colorcolumn = "80"
@@ -128,10 +129,10 @@ vim.keymap.set("n", "<C-k>", "<C-w><C-k>", { desc = "Move focus to the upper win
 -- vim.keymap.set("n", "<C-S-j>", "<C-w>J", { desc = "Move window to the lower" })
 -- vim.keymap.set("n", "<C-S-k>", "<C-w>K", { desc = "Move window to the upper" })
 
--- open Neotree with N
+-- open Neotree with Ctrl-N
 vim.keymap.set("n", "<C-n>", "<cmd>Neotree<CR>")
 
--- open Telescope with S ( originally same as C afaik )
+-- open Telescope with Ctrl-S ( originally same as C afaik )
 vim.keymap.set("n", "<C-s>", "<cmd>Telescope find_files<CR>")
 
 -- [[ Basic Autocommands ]]
@@ -145,6 +146,20 @@ vim.api.nvim_create_autocmd("TextYankPost", {
 	group = vim.api.nvim_create_augroup("kickstart-highlight-yank", { clear = true }),
 	callback = function()
 		vim.hl.on_yank()
+	end,
+})
+
+vim.api.nvim_create_autocmd("CursorHold", {
+	buffer = bufnr,
+	callback = function()
+		local opts = {
+			focusable = false,
+			close_events = { "CursorMoved", "CursorMovedI", "BufLeave" },
+			header = "",
+			prefix = "",
+			scope = "cursor",
+		}
+		vim.diagnostic.open_float(nil, opts)
 	end,
 })
 
@@ -438,6 +453,18 @@ require("lazy").setup({
 			{ "mason-org/mason.nvim", opts = {} },
 			"mason-org/mason-lspconfig.nvim",
 			"WhoIsSethDaniel/mason-tool-installer.nvim",
+      "mfussenegger/nvim-dap",
+      {
+        "jay-babu/mason-nvim-dap.nvim",
+        opts = {},
+      },
+      {
+        "mfussenegger/nvim-dap-python",
+        config = function ()
+          require"dap-python".setup("python3")
+        end
+      },
+
 
 			-- Useful status updates for LSP.
 			{ "j-hui/fidget.nvim", opts = {} },
@@ -446,6 +473,23 @@ require("lazy").setup({
 			"saghen/blink.cmp",
 		},
 		config = function()
+      local dap = require("dap")
+
+      vim.keymap.set("n", "<leader>db", function ()
+        dap.set_breakpoint(
+          vim.fn.input('Condition: '),
+          vim.fn.input('Hit count (> or % == n allowed): '),
+          vim.fn.input('Log message ({} to eval insert): '))
+      end, {desc = "[D]ebugger Set Conditional [B]reakpoint"})
+
+      vim.keymap.set("n", "<leader>dt", dap.toggle_breakpoint, {desc = "[D]ebugger [T]oggle Breakpoint"})
+      vim.keymap.set("n", "<leader>dl", dap.list_breakpoints, {desc = "[D]ebugger [L]ist Breakpoints"})
+      vim.keymap.set("n", "<leader>dr", dap.continue, {desc = "[D]ebugger [R]un/Resume"})
+      vim.keymap.set("n", "<leader>dc", dap.clear_breakpoints, {desc = "[D]ebugger [C]lear Breakpoints"})
+      vim.keymap.set("n", "<leader>dn", dap.step_into, {desc = "[D]ebugger [N]ext Step (into)"})
+      vim.keymap.set("n", "<leader>dN", dap.step_over, {desc = "[D]ebugger [N]ext Step (over)"})
+      vim.keymap.set("n", "<leader>dR", dap.repl.toggle, {desc = "[D]ebugger Toggle [R]EPL"})
+
 			-- Brief aside: **What is LSP?**
 			--
 			-- LSP is an initialism you've probably heard, but might not understand what it is.
@@ -453,7 +497,7 @@ require("lazy").setup({
 			-- LSP stands for Language Server Protocol. It's a protocol that helps editors
 			-- and language tooling communicate in a standardized fashion.
 			--
-			-- In general, you have a "server" which is some tool built to understand a particular
+			-- In general, you have a "server" which is some tool built to understand a particular:
 			-- language (such as `gopls`, `lua_ls`, `rust_analyzer`, etc.). These Language Servers
 			-- (sometimes called LSP servers, but that's kind of like ATM Machine) are standalone
 			-- processes that communicate with some "client" - in this case, Neovim!
@@ -619,6 +663,8 @@ require("lazy").setup({
 				},
 			})
 
+
+
 			-- LSP servers and clients are able to communicate to each other what features they support.
 			--  By default, Neovim doesn't support everything that is in the LSP specification.
 			--  When you add blink.cmp, luasnip, etc. Neovim now has *more* capabilities.
@@ -716,7 +762,7 @@ require("lazy").setup({
 		},
 		opts = {
 			notify_on_error = false,
-			format_on_save = function(bufnr)
+			--[[ format_on_save = function(bufnr)
 				-- Disable "format_on_save lsp_fallback" for languages that don't
 				-- have a well standardized coding style. You can add additional
 				-- languages here or re-enable it for the disabled ones.
@@ -728,12 +774,12 @@ require("lazy").setup({
 						timeout_ms = 500,
 						lsp_format = "fallback",
 					}
-				end
-			end,
+				end 
+			end,--]]
 			formatters_by_ft = {
 				lua = { "stylua" },
 				-- Conform can also run multiple formatters sequentially
-				-- python = { "isort", "black" },
+				python = { "black" },
 				--
 				-- You can use 'stop_after_first' to run the first available formatter from the list
 				-- javascript = { "prettierd", "prettier", stop_after_first = true },
@@ -763,12 +809,12 @@ require("lazy").setup({
 					-- `friendly-snippets` contains a variety of premade snippets.
 					--    See the README about individual language/framework/plugin snippets:
 					--    https://github.com/rafamadriz/friendly-snippets
-					-- {
-					--   'rafamadriz/friendly-snippets',
-					--   config = function()
-					--     require('luasnip.loaders.from_vscode').lazy_load()
-					--   end,
-					-- },
+					{
+					  'rafamadriz/friendly-snippets',
+					   config = function()
+					     require('luasnip.loaders.from_vscode').lazy_load()
+					   end,
+					},
 				},
 				opts = {},
 			},
@@ -814,7 +860,13 @@ require("lazy").setup({
 			completion = {
 				-- By default, you may press `<c-space>` to show the documentation.
 				-- Optionally, set `auto_show = true` to show the documentation after a delay.
-				documentation = { auto_show = false, auto_show_delay_ms = 500 },
+				documentation = {
+					auto_show = true,
+					auto_show_delay_ms = 500,
+					window = {
+						border = "rounded",
+					},
+				},
 			},
 
 			sources = {
@@ -970,7 +1022,12 @@ require("lazy").setup({
 		},
 	},
 })
-
+-- DAP signs - debugging-- 1. Opret highlight grupperne med specifikke farver
+vim.fn.sign_define('DapBreakpoint', {text='B', texthl='DiagnosticError', linehl='', numhl=''})
+vim.fn.sign_define('DapBreakpointCondition', {text='B?', texthl='DiagnosticError', linehl='', numhl=''})
+vim.fn.sign_define('DapLogPoint', {text='L', texthl='DiagnosticInfo', linehl='', numhl=''})
+vim.fn.sign_define('DapStopped', {text='->', texthl='DiagnosticWarn', linehl='DiagnosticUnderlineInfo', numhl=''})
+vim.fn.sign_define('DapBreakpointRejected', {text='!!', texthl='DiagnosticError', linehl='', numhl=''})
 -- colorscheme stuff
 vim.cmd([[if (has("termguicolors"))
  set termguicolors
